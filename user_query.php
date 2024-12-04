@@ -2,8 +2,6 @@
 session_start();
 include('navbar.php');
 
-
-
 // 获取当前用户的用户名
 $username = $_SESSION['username'];
 

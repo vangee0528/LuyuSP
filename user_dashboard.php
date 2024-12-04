@@ -9,6 +9,34 @@ if ($_SESSION['role'] !== 'user') {
 
 // 引入导航栏
 include('navbar.php');
+
+// 数据库连接
+$recordDb = new SQLite3('database2343/record.db');  // 确保数据库路径正确
+
+// 获取当前用户的用户名
+$username = $_SESSION['username'];
+
+// 获取当前月份
+$currentMonth = date('Y-m');
+
+// 查询当前月份该用户的记录并计算总金额
+$stmt = $recordDb->prepare("SELECT * FROM records WHERE producer = :producer AND strftime('%Y-%m', date) = :currentMonth");
+$stmt->bindValue(':producer', $username, SQLITE3_TEXT);
+$stmt->bindValue(':currentMonth', $currentMonth, SQLITE3_TEXT);
+$result = $stmt->execute();
+
+$income = 0;
+$records = [];
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $unitPrice = $row['unit_price'];
+    $quantity = $row['quantity'];
+    $amount = $unitPrice * $quantity;
+    $income += $amount;
+    $records[] = $row;
+}
+
+// 关闭数据库连接
+$recordDb->close();
 ?>
 
 <!DOCTYPE html>
@@ -54,6 +82,7 @@ include('navbar.php');
 
     <div class="dashboard-content">
         <h2>欢迎，用户 <?php echo htmlspecialchars($_SESSION['username']); ?>！</h2>
+        <p>您本月的总收入为：<?php echo number_format($income, decimals: 2); ?> 元，继续加油ヾ(◍°∇°◍)ﾉﾞ</p>
         
         <p>您可以在这里执行以下操作：</p>
         <ul>

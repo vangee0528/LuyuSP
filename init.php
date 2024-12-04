@@ -24,14 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT NOT NULL
+            role TEXT NOT NULL,
+            income REAL DEFAULT 0
         )";
         $user_db->exec($query);
 
         // 插入管理员账号（密码使用 password_hash 加密）
         $admin_password_hash = password_hash('admin', PASSWORD_DEFAULT);
-        $query = "INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', :password, 'admin')";
+        $query = "INSERT OR IGNORE INTO users (username, password, role, income) VALUES ('admin', :password, 'admin', 0)";
         $stmt = $user_db->prepare($query);
+        if (!$stmt) {
+            echo "SQL 错误: " . $user_db->lastErrorMsg();
+            exit();
+        }
         $stmt->bindValue(':password', $admin_password_hash, SQLITE3_TEXT);
         $stmt->execute();
 

@@ -9,15 +9,16 @@ if ($_SESSION['role'] != 'admin') {
 }
 
 // 数据库连接
-$db = new SQLite3('database2343/user.db');
+$userDb = new SQLite3('database2343/user.db');
+$recordDb = new SQLite3('database2343/record.db');
 
 // 查询所有用户
 $query = "SELECT id, username, role FROM users";
-$results = $db->query($query);
+$results = $userDb->query($query);
 
 // 检查查询是否成功
 if (!$results) {
-    die("查询失败: " . $db->lastErrorMsg());
+    die("查询失败: " . $userDb->lastErrorMsg());
 }
 
 // 处理密码重置
@@ -29,7 +30,7 @@ if (isset($_GET['reset_password']) && isset($_GET['user_id'])) {
 
     // 更新密码
     $update_query = "UPDATE users SET password = :new_password WHERE id = :user_id";
-    $stmt = $db->prepare($update_query);
+    $stmt = $userDb->prepare($update_query);
     $stmt->bindValue(':new_password', $new_password, SQLITE3_TEXT);
     $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
     $stmt->execute();
@@ -37,6 +38,9 @@ if (isset($_GET['reset_password']) && isset($_GET['user_id'])) {
     // 提示密码已重置
     $success_message = "密码已重置为1234";
 }
+
+// 获取当前月份
+$currentMonth = date('Y-m');
 
 ?>
 
@@ -60,6 +64,7 @@ if (isset($_GET['reset_password']) && isset($_GET['user_id'])) {
             <tr>
                 <th>用户名</th>
                 <th>权限</th>
+                <th>当月收入</th>
                 <th>操作</th>
             </tr>
         </thead>
@@ -69,16 +74,25 @@ if (isset($_GET['reset_password']) && isset($_GET['user_id'])) {
             if ($results) {
                 // 循环遍历查询结果
                 while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
+                    // 计算用户当月收入
+                    $stmt = $recordDb->prepare("SELECT SUM(quantity * unit_price) as total_income FROM records WHERE producer = :producer AND strftime('%Y-%m', date) = :currentMonth");
+                    $stmt->bindValue(':producer', $row['username'], SQLITE3_TEXT);
+                    $stmt->bindValue(':currentMonth', $currentMonth, SQLITE3_TEXT);
+                    $incomeResult = $stmt->execute();
+                    $incomeRow = $incomeResult->fetchArray(SQLITE3_ASSOC);
+                    $income = $incomeRow['total_income'] ? $incomeRow['total_income'] : 0;
+
                     echo '<tr>';
                     echo '<td>' . htmlspecialchars($row['username']) . '</td>';
                     echo '<td>' . htmlspecialchars($row['role']) . '</td>';
+                    echo '<td>' . htmlspecialchars(number_format($income, 2)) . '</td>';
                     echo '<td>';
                     echo '<a href="admin_user.php?reset_password=true&user_id=' . $row['id'] . '" class="btn-reset" onclick="return confirm(\'确定要重置密码为1234吗？\')">重置密码</a>';
                     echo '</td>';
                     echo '</tr>';
                 }
             } else {
-                echo '<tr><td colspan="3">没有找到用户</td></tr>';
+                echo '<tr><td colspan="4">没有找到用户</td></tr>';
             }
             ?>
         </tbody>
@@ -88,5 +102,6 @@ if (isset($_GET['reset_password']) && isset($_GET['user_id'])) {
 </html>
 
 <?php
-$db->close();
+$userDb->close();
+$recordDb->close();
 ?>
